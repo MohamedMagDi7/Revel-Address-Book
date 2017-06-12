@@ -83,7 +83,7 @@ func (c App) Login() revel.Result {
 		err = DB.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
 		if err == sql.ErrNoRows {
 			c.Flash.Data["Log"]="UserName Doesn't exist!"
-			//fmt.Println("no such user")
+			fmt.Println("no such user")
 			return c.Redirect("/")
 
 
@@ -96,11 +96,11 @@ func (c App) Login() revel.Result {
 		// If wrong password redirect to the login
 		if err != nil {
 			c.Flash.Data["Log"]="Wrong Password!"
-			//fmt.Println("wrong password")
+			fmt.Println("wrong password")
 			return c.Redirect("/")
 
 		} else {
-			//fmt.Println("password match")
+			fmt.Println("password match")
 			// If the login succeeded
 			c.Flash.Data["Log"]=""
 			c.Session["user"]=username

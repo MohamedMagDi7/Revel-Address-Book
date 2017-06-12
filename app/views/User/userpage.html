@@ -75,7 +75,8 @@ theDiv.appendChild(html_element);
 <style>
 
 table, td, th {
-    border: 1px solid #ddd;
+    border: 2px solid #ddd;
+    border-color: darkred;
     text-align: left;
 }
 
@@ -150,12 +151,13 @@ color: black;
 </style>
 </head>
 <body id="mybody" >
+<div id="links" align="left" style=" background-color: lightgray; padding-top: 1.5em; padding-bottom: 1.5em;  border-bottom-style: solid; border-color: darkred;" ><b style="">You are logged in as: </b><b style="color: darkred; text-shadow: 1px 1px 1px #555;">{{.MyUser.UserName}}</b>
+    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
 
 
-
-<div id="User" align="left" >You are logged in as: <b style="color: Green; text-shadow: 1px 1px 1px #555;">{{.MyUser.UserName}}</b></div>
-<div id="links" align="right" style="margin-top: 2em; " >
-    <a href="/userpage" class="link" >Profile</a>
+    <a href="/userpage" class="link"  >Profile</a>
     <a class="link" onclick="AboutUs()" >About Us</a>
     <a class="link" onclick="ContactUs()">Contact Us</a>
     <a href="/logout" id="link" onclick="Logout()" >Logout</a>
@@ -181,7 +183,7 @@ color: black;
 
 
 <div id="user_page" align="middle">
-    <h1 style="color: yellow; font-size: 28px;
+    <h1 style="color: darkred; font-size: 28px;
         font-weight: bold; text-shadow: 1px 1px 1px #555;">Enter new contact!</h1>
     <form id="contact-form" onsubmit="AddContact(); return false">
             <p><label>First Name    : &emsp;&emsp;<input type="text" name="first-name" required="enabled"></label></p>
@@ -189,9 +191,7 @@ color: black;
             <p><label>E-mail Address : <input type=email name="email" required="enabled"></label></p>
           <p>&emsp;&emsp;&emsp;&emsp;&emsp;<label>Phone Number  : <input name="phone1" required="enabled"></label>
             <button class="button button2" name="add-number" value="add_number"  onclick="add_number(); return false" > + </button></p>
-<span id="numbers">
 
-</span>
 <br>
              <input class="button button2" type="submit" value="Add-Contact"  >
         </form>
