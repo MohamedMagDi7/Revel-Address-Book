@@ -15,8 +15,7 @@ type App struct {
 }
 
 func (c App) Index() revel.Result {
-	err := c.Flash.Data["Log"]
-	fmt.Println(err)
+
 	return c.Render(err)
 }
 

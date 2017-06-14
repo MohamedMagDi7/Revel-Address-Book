@@ -8,12 +8,17 @@ import (
 
 )
 
+type PhoneNum struct {
+	ID int
+	Phonenumber string
+
+}
 type Contact struct{
 	Id int
 	FirstName string
 	LastName string
 	Email string
-	PhoneNumber []string
+	PhoneNumber []PhoneNum
 
 }
 type User_Contancts struct {
@@ -53,7 +58,7 @@ func (u User) Userpage() revel.Result {
 		var c Contact
 		rows.Scan(&c.Id, &c.FirstName, &c.LastName, &c.Email)
 
-		res, err := DB.Query("select phonenumber from phonenumbers where contact_id= ?", c.Id)
+		res, err := DB.Query("select phonenumber,id from phonenumbers where contact_id= ?",c.Id)
 		if err != nil {
 			fmt.Println("DB error")
 			u.RenderError(err)
@@ -61,16 +66,14 @@ func (u User) Userpage() revel.Result {
 		}
 
 		for res.Next() {
-			var N string
-			res.Scan(&N)
-			c.PhoneNumber = append(c.PhoneNumber, N)
+			Phone := PhoneNum{}
+			res.Scan(&Phone.Phonenumber , &Phone.ID)
+			c.PhoneNumber = append(c.PhoneNumber, Phone)
 
 		}
 		MyUser.Contacts = append(MyUser.Contacts, c)
 
 	}
-
-
 
 	return u.Render(MyUser)
 }
@@ -94,13 +97,18 @@ func (u User) AddContact() revel.Result{
 	i := 1
 	for u.Params.Get("phone" + strconv.Itoa(i)) != "" {
 		str :=u.Params.Get("phone" + strconv.Itoa(i))
-		c.PhoneNumber = append(c.PhoneNumber, str)
 		_, err := DB.Exec("insert into phonenumbers values(?,?,?)", nil, str , id)
 		if err != nil {
 			return u.RenderError(err)
 		}
+		row := DB.QueryRow("select MAX(id) from phonenumbers")
+		var id int
+		row.Scan(&id)
+		Phone := PhoneNum{Phonenumber:str , ID:id}
+		c.PhoneNumber = append(c.PhoneNumber, Phone)
 		i++
 	}
+
 
 	MyUser.Contacts = append(MyUser.Contacts, c)
 	return u.RenderJSON(c)
@@ -116,6 +124,19 @@ func (u User) Delete() revel.Result {
 		return u.RenderError(err)
 	}
 	fmt.Println("row Deleted")
+	return u.Result
+}
+
+func (u User) DeleteNum() revel.Result {
+	fmt.Println(u.Params.Get("id"))
+	u.Validation.Required(u.Params.Get("id"))
+	_ ,err := DB.Exec("delete from phonenumbers where id = ?",u.Params.Get("id"))
+
+	if err !=nil{
+		fmt.Println("DB error")
+		return u.RenderError(err)
+	}
+	fmt.Println("number Deleted")
 	return u.Result
 }
 

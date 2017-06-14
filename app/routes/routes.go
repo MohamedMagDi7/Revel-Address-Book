@@ -48,6 +48,13 @@ func (_ tUser) Delete(
 	return revel.MainRouter.Reverse("User.Delete", args).URL
 }
 
+func (_ tUser) DeleteNum(
+		) string {
+	args := make(map[string]string)
+	
+	return revel.MainRouter.Reverse("User.DeleteNum", args).URL
+}
+
 func (_ tUser) Logout(
 		) string {
 	args := make(map[string]string)

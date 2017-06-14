@@ -10,6 +10,7 @@
     <script>
 
     function AppendContact(contact){
+
        $("#view-contacts").append("<tr id='contact-row-" + contact.Id + "'> <td>" + contact.FirstName + "</td> <td>" + contact.LastName +
          "</td> <td>" + contact.Email + "</td> <td>" + contact.PhoneNumber+
          "</td> <td><button class='delete-btn' onclick='DeleteContact(" + contact.Id + ")'>Delete</button></td> </tr>");
@@ -56,21 +57,7 @@ var count=1;
     $("#user_page").show();
     }
 
-    function add_number()
-    {
 
-var html_text = document.createTextNode("Number: ");
-var html_element =document.createElement( "input");
-var att = document.createAttribute("name");
-count= count+1;
-att.value='phone' + count;
-html_element.setAttributeNode(att); 
-     var theDiv =  document.getElementById("numbers");
-theDiv.appendChild(html_text);
-theDiv.appendChild(html_element);
-
-
-    }
 </script>
 <style>
 
@@ -189,12 +176,10 @@ color: black;
             <p><label>First Name    : &emsp;&emsp;<input type="text" name="first-name" required="enabled"></label></p>
             <p><label>Last Name     : &emsp;&emsp;<input type="text" name="last-name" required="enabled"></label></p>
             <p><label>E-mail Address : <input type=email name="email" required="enabled"></label></p>
-          <p>&emsp;&emsp;&emsp;&emsp;&emsp;<label>Phone Number  : <input name="phone1" required="enabled"></label>
-            <button class="button button2" name="add-number" value="add_number"  onclick="add_number(); return false" > + </button></p>
-
-<br>
-             <input class="button button2" type="submit" value="Add-Contact"  >
-        </form>
+            <p>&emsp;&emsp;&emsp;&emsp;&emsp;<label>Phone Number  : <input name="phone1" required="enabled"></label>
+            <button class="button button2"  name="add-number" value="add_number"  onclick="add_number(); return false;" > + </button></p><br>
+            <input class="button button2" type="submit" value="Add-Contact"  >
+    </form>
 </div>
 <br>
 <div id="contact-table" style="display: none;">
@@ -214,7 +199,7 @@ color: black;
             <td>{{.FirstName}}</td>
             <td>{{.LastName}}</td>
             <td>{{.Email}}</td>
-            <td>{{range .PhoneNumber}} {{.}} <br>{{end}}</td>
+            <td>{{range .PhoneNumber}} <object id="number-{{.ID}}"> {{.Phonenumber}} <button class="delete-btn" onclick="DeleteNum({{.ID}})" >Delete</button> </object><br>{{end}}</td>
 
             <td> <button class="delete-btn" onclick="Delete({{.Id}})" >Delete</button></td>
         </tr>
@@ -232,7 +217,24 @@ color: black;
 
 
 <script>
-     function AddContact()
+
+  function add_number()
+    {
+        var html_text = document.createTextNode("Number: ");
+        var html_element =document.createElement( "input");
+        var att = document.createAttribute("name");
+        count= count+1;
+        att.value='phone' + count;
+        html_element.setAttributeNode(att);
+        var theDiv =  document.getElementById("numbers");
+        theDiv.appendChild(html_text);
+        theDiv.appendChild(html_element);
+
+
+    }
+
+
+function AddContact()
     {
 
        $.ajax({
@@ -253,6 +255,18 @@ function Delete(Id)
            url: '/delete?id=' +Id ,
            type: 'GET' ,
            success: $("#contact-row-"+Id).remove()
+    });
+
+
+    }
+
+    function DeleteNum(ID)
+    {
+    $.ajax({
+
+           url: '/deletenum?id=' +ID ,
+           type: 'GET' ,
+           success: $("#number-"+ID).remove()
     });
 
 

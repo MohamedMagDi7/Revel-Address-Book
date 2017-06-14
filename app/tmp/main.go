@@ -36,7 +36,7 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					20: []string{ 
+					19: []string{ 
 						"err",
 					},
 				},
@@ -46,7 +46,7 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					115: []string{ 
+					114: []string{ 
 					},
 				},
 			},
@@ -60,7 +60,7 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					75: []string{ 
+					78: []string{ 
 						"MyUser",
 					},
 				},
@@ -74,6 +74,13 @@ func main() {
 			},
 			&revel.MethodType{
 				Name: "Delete",
+				Args: []*revel.MethodArg{ 
+				},
+				RenderArgNames: map[int][]string{ 
+				},
+			},
+			&revel.MethodType{
+				Name: "DeleteNum",
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
