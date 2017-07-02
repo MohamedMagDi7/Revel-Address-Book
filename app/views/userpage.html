@@ -138,7 +138,7 @@ color: black;
 </style>
 </head>
 <body id="mybody" >
-<div id="links" align="left" style=" background-color: lightgray; padding-top: 1.5em; padding-bottom: 1.5em;  border-bottom-style: solid; border-color: darkred;" ><b style="">You are logged in as: </b><b style="color: darkred; text-shadow: 1px 1px 1px #555;">{{.Myuser.UserName}}</b>
+<div id="links" align="left" style=" background-color: lightgray; padding-top: 1.5em; padding-bottom: 1.5em;  border-bottom-style: solid; border-color: darkred;" ><b style="">You are logged in as: </b><b style="color: darkred; text-shadow: 1px 1px 1px #555;">{{.MyUser.UserName}}</b>
     &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
     &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
     &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
@@ -177,13 +177,11 @@ color: black;
             <p><label>Last Name     : &emsp;&emsp;<input type="text" name="last-name" required="enabled"></label></p>
             <p><label>E-mail Address : <input type=email name="email" required="enabled"></label></p>
             <p>&emsp;&emsp;&emsp;&emsp;&emsp;<label>Phone Number  : <input name="phone1" required="enabled"></label>
-            <div style="color: red; " >{{.flash.error}}</div>
             <button class="button button2"  name="add-number" value="add_number"  onclick="add_number(); return false;" > + </button></p><br>
-                <span id="numbers"></span><br>
             <input class="button button2" type="submit" value="Add-Contact"  >
     </form>
 </div>
-<br>    
+<br>
 <div id="contact-table" style="display: none;">
     <table>
         <thead>
@@ -196,12 +194,12 @@ color: black;
         </tr>
         </thead>
         <tbody id="view-contacts">
-        {{range .Myuser.Contacts}}
+        {{range .MyUser.Contacts}}
         <tr id="contact-row-{{.Id}}">
             <td>{{.FirstName}}</td>
             <td>{{.LastName}}</td>
             <td>{{.Email}}</td>
-            <td>{{range .PhoneNumber}} <object id="number-{{.Id}}"> {{.Phonenumber}} <button class="delete-btn" onclick="DeleteNum({{.Id}})" >Delete</button> </object><br>{{end}}</td>
+            <td>{{range .PhoneNumber}} <object id="number-{{.ID}}"> {{.Phonenumber}} <button class="delete-btn" onclick="DeleteNum({{.ID}})" >Delete</button> </object><br>{{end}}</td>
 
             <td> <button class="delete-btn" onclick="Delete({{.Id}})" >Delete</button></td>
         </tr>
@@ -244,8 +242,8 @@ function AddContact()
             type: 'POST',
             data: $("#contact-form").serialize(),
             success: function(data){
-            location.reload(true);
 
+            location.reload(true);
             }
      });
     }

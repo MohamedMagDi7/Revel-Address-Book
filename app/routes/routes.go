@@ -15,6 +15,28 @@ func (_ tApp) Index(
 	return revel.MainRouter.Reverse("App.Index", args).URL
 }
 
+func (_ tApp) SignIn(
+		username string,
+		password string,
+		) string {
+	args := make(map[string]string)
+	
+	revel.Unbind(args, "username", username)
+	revel.Unbind(args, "password", password)
+	return revel.MainRouter.Reverse("App.SignIn", args).URL
+}
+
+func (_ tApp) Register(
+		username string,
+		password string,
+		) string {
+	args := make(map[string]string)
+	
+	revel.Unbind(args, "username", username)
+	revel.Unbind(args, "password", password)
+	return revel.MainRouter.Reverse("App.Register", args).URL
+}
+
 func (_ tApp) Login(
 		) string {
 	args := make(map[string]string)

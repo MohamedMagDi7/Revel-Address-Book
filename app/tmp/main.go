@@ -36,9 +36,26 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					19: []string{ 
-						"err",
+					20: []string{ 
 					},
+				},
+			},
+			&revel.MethodType{
+				Name: "SignIn",
+				Args: []*revel.MethodArg{ 
+					&revel.MethodArg{Name: "username", Type: reflect.TypeOf((*string)(nil)) },
+					&revel.MethodArg{Name: "password", Type: reflect.TypeOf((*string)(nil)) },
+				},
+				RenderArgNames: map[int][]string{ 
+				},
+			},
+			&revel.MethodType{
+				Name: "Register",
+				Args: []*revel.MethodArg{ 
+					&revel.MethodArg{Name: "username", Type: reflect.TypeOf((*string)(nil)) },
+					&revel.MethodArg{Name: "password", Type: reflect.TypeOf((*string)(nil)) },
+				},
+				RenderArgNames: map[int][]string{ 
 				},
 			},
 			&revel.MethodType{
@@ -46,7 +63,7 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					114: []string{ 
+					128: []string{ 
 					},
 				},
 			},
@@ -60,8 +77,8 @@ func main() {
 				Args: []*revel.MethodArg{ 
 				},
 				RenderArgNames: map[int][]string{ 
-					78: []string{ 
-						"MyUser",
+					154: []string{ 
+						"Myuser",
 					},
 				},
 			},
@@ -162,6 +179,12 @@ func main() {
 		})
 	
 	revel.DefaultValidationKeys = map[string]map[int]string{ 
+		"MyRevelApp/app/controllers.App.Login": { 
+			106: "username",
+			107: "password",
+			108: "username",
+			109: "password",
+		},
 	}
 	testing.TestSuites = []interface{}{ 
 		(*tests.AppTest)(nil),

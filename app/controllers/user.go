@@ -3,16 +3,16 @@ package controllers
 import (
 	"github.com/revel/revel"
 	"fmt"
-
 	"strconv"
-
+	"database/sql"
 )
 
 type PhoneNum struct {
-	ID int
+	Id int64
 	Phonenumber string
 
 }
+
 type Contact struct{
 	Id int
 	FirstName string
@@ -21,132 +21,218 @@ type Contact struct{
 	PhoneNumber []PhoneNum
 
 }
-type User_Contancts struct {
+
+type UserContancts struct {
 	UserName string
 	Id string
+	Password string
 	Contacts []Contact
 
 }
 
-var MyUser =User_Contancts{}
 type User struct {
 	*revel.Controller
+	User UserContancts
+	Db *sql.DB
 }
 
-func (u User) Userpage() revel.Result {
+func (user * User) DeleteContact(id string) error{
+	_ ,err := user.Db.Exec("delete from contact where contactID = ?",id)
+	return err
 
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user * User) GetUserId() (error){
+	var id int
+	err := user.Db.QueryRow("select id from users where username = ?",user.User.UserName).Scan(&id)
+	user.User.Id = strconv.Itoa(id)
+	return err
 
-	MyUser.Contacts = []Contact{}
-	Username := u.Session["user"]
-	if Username == "" {
-		return u.Redirect("/")
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user * User) DeleteContactNumber(id string) error{
+	_ ,err := user.Db.Exec("delete from phonenumbers where id = ?",id)
+	return err
 
-	}
-
-	MyUser.UserName = Username
-	row := DB.QueryRow("select id from users where username= ?", Username)
-
-	row.Scan(&MyUser.Id)
-	rows, err := DB.Query("select contactID,fname,lname,email from contact where userID= ?", MyUser.Id)
-	if err != nil {
-		fmt.Println("DB error")
-		u.RenderError(err)
-
-	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user * User) GetUserContacts() error{
+	rows, err := user.Db.Query("select contactID,fname,lname,email,id,phonenumber from contact join`phonenumbers` on contact.contactID = phonenumbers.contact_id where userID= ?" , user.User.Id)
+	var currentcontact Contact
+	var newcontact Contact
+	var phone PhoneNum
 
 	for rows.Next() {
-		var c Contact
-		rows.Scan(&c.Id, &c.FirstName, &c.LastName, &c.Email)
 
-		res, err := DB.Query("select phonenumber,id from phonenumbers where contact_id= ?",c.Id)
-		if err != nil {
-			fmt.Println("DB error")
-			u.RenderError(err)
+		rows.Scan(&newcontact.Id, &newcontact.FirstName, &newcontact.LastName , &newcontact.Email , &phone.Id , &phone.Phonenumber )
 
-		}
+		if newcontact.Id!=currentcontact.Id && currentcontact.Id != 0{
 
-		for res.Next() {
-			Phone := PhoneNum{}
-			res.Scan(&Phone.Phonenumber , &Phone.ID)
-			c.PhoneNumber = append(c.PhoneNumber, Phone)
+			user.User.Contacts = append(user.User.Contacts, currentcontact)
+			currentcontact = newcontact
+
+
+		}else if currentcontact.Id == 0{
+
+			currentcontact=newcontact
 
 		}
-		MyUser.Contacts = append(MyUser.Contacts, c)
-
+		currentcontact.PhoneNumber = append(currentcontact.PhoneNumber, phone)
 	}
-
-	return u.Render(MyUser)
+	user.User.Contacts = append(user.User.Contacts, currentcontact)
+	return err
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user * User) InsertNewContact() (Contact,error){
+	//Start Transaction
 
-func (u User) AddContact() revel.Result{
-	_, err := DB.Exec("insert into contact values(? ,? ,? ,? ,? ) ", nil, u.Params.Get("first-name"),
-		u.Params.Get("last-name"), u.Params.Get("email"), MyUser.Id)
-	if err != nil {
-		return u.RenderError(err)
+	_ , err := user.Db.Exec("START TRANSACTION")
+	if err!=nil {
+		return Contact{},err
 	}
-	row := DB.QueryRow("select MAX(contactID) from contact")
-	var id int
-	row.Scan(&id)
+
+	res, _err := user.Db.Exec("insert into contact values(? ,? ,? ,? ,? ) ", nil, user.Params.Get("first-name"), user.Params.Get("last-name"), user.Params.Get("email"), user.User.Id)
+	if _err != nil {
+		user.Db.Exec("ROLLBACK")
+		return Contact{},err
+	}
+	id , _ := res.LastInsertId()
 
 	c := Contact{
-		FirstName:u.Params.Get("first-name"),
-		LastName:u.Params.Get("last-name"),
-		Email:u.Params.Get("email"),
+		FirstName:user.Params.Get("first-name"),
+		LastName:user.Params.Get("last-name"),
+		Email:user.Params.Get("email"),
 		//PhoneNumber:r.FormValue("phone"),
 	}
 	i := 1
-	for u.Params.Get("phone" + strconv.Itoa(i)) != "" {
-		str :=u.Params.Get("phone" + strconv.Itoa(i))
-		_, err := DB.Exec("insert into phonenumbers values(?,?,?)", nil, str , id)
+	for user.Params.Get("phone" + strconv.Itoa(i)) != "" {
+		str := user.Params.Get("phone" + strconv.Itoa(i))
+		res , err := user.Db.Exec("insert into phonenumbers values(?,?,?)", nil, str , id)
 		if err != nil {
-			return u.RenderError(err)
+			user.Db.Exec("ROLLBACK")
+			return Contact{},err
 		}
-		row := DB.QueryRow("select MAX(id) from phonenumbers")
-		var id int
-		row.Scan(&id)
-		Phone := PhoneNum{Phonenumber:str , ID:id}
+		id , _ := res.LastInsertId()
+		Phone := PhoneNum{Phonenumber:str , Id:id}
 		c.PhoneNumber = append(c.PhoneNumber, Phone)
 		i++
 	}
-
-
-	MyUser.Contacts = append(MyUser.Contacts, c)
-	return u.RenderJSON(c)
-}
-
-func (u User) Delete() revel.Result {
-	fmt.Println(u.Params.Get("id"))
-	u.Validation.Required(u.Params.Get("id"))
-	_ ,err := DB.Exec("delete from contact where contactID = ?",u.Params.Get("id"))
-
-	if err !=nil{
-		fmt.Println("DB error")
-		return u.RenderError(err)
+	_ , err =user.Db.Exec("COMMIT")
+	if err != nil {
+		return Contact{}, err
 	}
-	fmt.Println("row Deleted")
-	return u.Result
+	user.User.Contacts = append(user.User.Contacts, c)
+	return c , nil
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user *User) Userpage() revel.Result {
 
-func (u User) DeleteNum() revel.Result {
-	fmt.Println(u.Params.Get("id"))
-	u.Validation.Required(u.Params.Get("id"))
-	_ ,err := DB.Exec("delete from phonenumbers where id = ?",u.Params.Get("id"))
 
-	if err !=nil{
+	user.User.Contacts = nil
+	Username := user.Session["user"]
+	if Username == "" {
+		return user.Redirect("/")
+
+	}
+
+	user.User.UserName = Username
+	err := user.GetUserId()
+	if err != nil {
 		fmt.Println("DB error")
-		return u.RenderError(err)
+		user.RenderError(err)
+
+	}
+	user.Session["userid"]=user.User.Id
+	err =user.GetUserContacts()
+	if err != nil {
+		fmt.Println("DB error")
+		user.RenderError(err)
+
+	}
+
+	Myuser :=user.User
+	return user.Render(Myuser)
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user *User) AddContact() revel.Result{
+	user.User.UserName=user.Session["user"]
+	user.User.Id=user.Session["userid"]
+	user.Validation.Required(user.Params.Get("first-name"))
+	user.Validation.Required(user.Params.Get("last-name"))
+	user.Validation.Required(user.Params.Get("email"))
+	user.Validation.MaxSize(user.Params.Get("first-name") ,50)
+	user.Validation.MaxSize(user.Params.Get("last-name") ,50)
+	user.Validation.MaxSize(user.Params.Get("email") ,50)
+	user.Validation.MinSize(user.Params.Get("email") , 7)
+
+
+	if user.Validation.HasErrors() {
+		user.Validation.Keep()
+		user.FlashParams()
+		fmt.Println("error")
+		return user.RenderTemplate("User/userpage.html")
+	}else {
+		fmt.Println("No error")
+		c , err := user.InsertNewContact()
+		if err !=nil {
+			return user.RenderError(err)
+		}
+		return user.RenderJSON(c)
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user User) Delete() revel.Result {
+	user.Validation.Clear()
+	user.Validation.Required(user.Params.Get("id"))
+	if user.Validation.HasErrors() {
+		return user.RenderTemplate("user/userpage.html")
+	} else {
+		err := user.DeleteContact(user.Params.Get("id"))
+		if err != nil {
+			fmt.Println("DB error")
+			return user.RenderError(err)
+		}
+		fmt.Println("row Deleted")
+		return user.Result
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user User) DeleteNum() revel.Result{
+	user.Validation.Clear()
+	user.Validation.Required(user.Params.Get("id"))
+	if user.Validation.HasErrors() {
+		return user.RenderTemplate("user/userpage.html")
+	} else {
+		err := user.DeleteContactNumber(user.Params.Get("id"))
+		if err != nil {
+			fmt.Println("DB error")
+			return user.RenderError(err)
+		}
 	}
 	fmt.Println("number Deleted")
-	return u.Result
+	return user.Result
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func (user User) Logout() revel.Result{
+	user.User.UserName=""
+	user.User.Id=""
+	user.User.Password=""
+	user.User.Contacts=[] Contact{}
+	user.Session["user"] = ""
 
-func (u User) Logout() revel.Result{
 
-	u.Session["user"] = ""
-
-	return u.Redirect("/")
+	return user.Redirect("/")
 }
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+func startDatabase(user *User) revel.Result{
+	var err error
+	user.Db, err= sql.Open("mysql", "root:1819@tcp(127.0.0.1:3306)/my_add_bookDB")
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 func init(){
-	revel.InterceptFunc(startDB , revel.BEFORE, &User{})
+	revel.InterceptMethod(startDatabase , revel.BEFORE)
 }
