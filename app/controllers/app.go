@@ -3,15 +3,15 @@ package controllers
 import (
 	"github.com/revel/revel"
 	"fmt"
-	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/crypto/bcrypt"
+	"github.com/gocql/gocql"
 )
 
 type App struct {
 	*revel.Controller
-	db *sql.DB
+	db *gocql.Session
 
 }
 
@@ -21,21 +21,22 @@ func (c App) Index() revel.Result {
 }
 
 func (c App) CheckUsernameExists( username string) error{
-	var userName string
-	_,err := c.db.Query("SELECT username FROM users WHERE username=?", userName)
+	var databasePassword string
+
+	err := c.db.Query("SELECT password FROM user_logins WHERE username=?", username).Scan( &databasePassword)
+	fmt.Println(err)
 	return err
 }
 
 func (c App) QueryUser(username string) (string,error){
 	var databasePassword string
 
-	err := c.db.QueryRow("SELECT password FROM users WHERE username=?", username).Scan( &databasePassword)
-
+	err := c.db.Query("SELECT password FROM user_logins WHERE username=?", username).Scan( &databasePassword)
 	return databasePassword,err
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (c App) InsertUser( username string, hashedPassword []byte) error{
-	_, err :=c.db.Exec("INSERT INTO users(username, password) VALUES(?, ?)",username, hashedPassword)
+	err :=c.db.Query("INSERT INTO user_logins(username, password) VALUES(?, ?)",username, hashedPassword).Exec()
 	return err
 
 }
@@ -44,7 +45,7 @@ func (c App) SignIn(username string , password string) revel.Result{
 	var err error
 	var databasePassword string
 	databasePassword, err = c.QueryUser( username)
-	if err == sql.ErrNoRows {
+	if err == gocql.ErrNotFound {
 		//no such user
 		c.Flash.Error("Username doesn't exist")
 		return c.Redirect( "/")
@@ -74,7 +75,7 @@ func (c App) Register(username string , password string) revel.Result{
 		c.Flash.Error( "Please choose a different username")
 		return c.Redirect( "/" )
 
-	case err == sql.ErrNoRows:
+	case err == gocql.ErrNotFound :
 		// Username is available
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -130,7 +131,9 @@ func (c App) Login() revel.Result {
 
 func startDB(c *App) revel.Result{
 	var err error
-	c.db, err= sql.Open("mysql", "root:1819@tcp(127.0.0.1:3306)/my_add_bookDB")
+	cluster := gocql.NewCluster("127.0.0.1")
+	cluster.Keyspace = "address_book"
+	c.db, err = cluster.CreateSession()
 	if err != nil {
 		panic(err)
 	}

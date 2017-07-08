@@ -201,7 +201,7 @@ color: black;
             <td>{{.FirstName}}</td>
             <td>{{.LastName}}</td>
             <td>{{.Email}}</td>
-            <td>{{range .PhoneNumber}} <object id="number-{{.Id}}"> {{.Phonenumber}} <button class="delete-btn" onclick="DeleteNum({{.Id}})" >Delete</button> </object><br>{{end}}</td>
+            <td>{{range .PhoneNumbersStamped}} <object id="number-{{.Id}}-{{.ContactId}}"> {{.Phonenumber}} <button class="delete-btn" onclick="DeleteNum({{.Id}},{{.ContactId}})" >Delete</button> </object><br>{{end}}</td>
 
             <td> <button class="delete-btn" onclick="Delete({{.Id}})" >Delete</button></td>
         </tr>
@@ -262,13 +262,13 @@ function Delete(Id)
 
     }
 
-    function DeleteNum(ID)
+  function DeleteNum(Id , ContactId)
     {
     $.ajax({
 
-           url: '/deletenum?id=' +ID ,
+           url: '/deletenum?id=' +Id +'&ID=' + ContactId,
            type: 'GET' ,
-           success: $("#number-"+ID).remove()
+           success: $("#number-"+Id+"-"+ContactId).remove()
     });
 
 
