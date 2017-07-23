@@ -8,7 +8,6 @@ module:testrunner
 
 
 GET     /                                       App.Index
-
 POST    /login                                  App.Login
 GET     /userpage                               User.Userpage
 GET     /delete                                 User.Delete

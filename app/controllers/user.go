@@ -33,11 +33,10 @@ type UserContancts struct {
 
 type User struct {
 	*revel.Controller
-	User UserContancts
 	Db *gocql.Session
 }
 
-func StampContactId (contact  Contact) Contact{
+func (contact  *Contact)StampContactId () {
 	i :=0
 	contact.PhoneNumbersStamped = []PhoneNum{}
 	fmt.Println(len(contact.PhoneNumbers))
@@ -48,105 +47,71 @@ func StampContactId (contact  Contact) Contact{
 		contact.PhoneNumbersStamped = append(contact.PhoneNumbersStamped , PhoneNum{ContactId:contactid , Id:numberid , Phonenumber:phonenumber})
 		i++
 	}
-
-	return contact
 }
 
-func (user * User) DeleteContact(id string) error{
-	user.User.UserName = user.Session["user"]
-	err := user.Db.Query("delete from user_data where username = ? and contact_id = ?",user.User.UserName , id).Exec()
+func (user * UserContancts) DeleteContact(id string , db *gocql.Session) error{
+	err := db.Query("delete from user_data where username = ? and contact_id = ?",user.UserName , id).Exec()
 	fmt.Println(err)
 	return err
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-/*func (user * User) GetUserId() (error){
-	var id int
-	err := user.Db.QueryRow("select id from users where username = ?",user.User.UserName).Scan(&id)
-	user.User.Id = strconv.Itoa(id)
-	return err
-
-}*/
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-func (user * User) DeleteContactNumber(id string , contactid string) error{
-	user.User.UserName = user.Session["user"]
-	err := user.Db.Query("delete contact_phonenumbers[?] from user_data where username = ? and contact_id = ?",id ,user.User.UserName , contactid ).Exec()
+func (user * UserContancts) DeleteContactNumber(id string , contactid string , db *gocql.Session) error{
+	err := db.Query("delete contact_phonenumbers[?] from user_data where username = ? and contact_id = ?",id ,user.UserName , contactid ).Exec()
 	return err
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-func (user * User) GetUserContacts() error{
+func (user * UserContancts) GetUserContacts( db *gocql.Session) error{
 	var newcontact Contact
-	rows := user.Db.Query("select contact_id,contact_email,contact_fname,contact_lname,contact_phonenumbers from user_data where username= ?" , user.User.UserName)
+	rows := db.Query("select contact_id,contact_email,contact_fname,contact_lname,contact_phonenumbers from user_data where username= ?" , user.UserName)
 	scanner :=rows.Iter().Scanner()
 	for scanner.Next(){
 		scanner.Scan(&newcontact.Id , &newcontact.Email, &newcontact.FirstName , &newcontact.LastName , &newcontact.PhoneNumbers)
-		newcontact = StampContactId(newcontact)
+		newcontact.StampContactId()
 
-		user.User.Contacts = append(user.User.Contacts, newcontact)
+		user.Contacts = append(user.Contacts, newcontact)
 	}
 	err := rows.Iter().Close()
 	return err
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-func (user * User) InsertNewContact() (Contact,error){
-	//Start Transaction
+func (user * UserContancts) InsertNewContact(c Contact , db * gocql.Session) (Contact, error){
 
-	var phonenumbers [] string
-
-	i := 1
-	for user.Params.Get("phone" + strconv.Itoa(i)) != "" {
-		str := user.Params.Get("phone" + strconv.Itoa(i))
-		phonenumbers = append(phonenumbers,str)
-		i++
-	}
-	fmt.Println(phonenumbers)
-	c := Contact{
-		FirstName:user.Params.Get("first-name"),
-		LastName:user.Params.Get("last-name"),
-		Email:user.Params.Get("email"),
-		PhoneNumbers:phonenumbers,
-	}
-
-	fmt.Println("before query")
-	err := user.Db.Query("insert into user_data (username ,contact_id , contact_email , contact_fname , contact_lname , contact_phonenumbers ) values(? , uuid() , ? , ? , ? , ? ) ", user.User.UserName, user.Params.Get("email") , user.Params.Get("first-name"), user.Params.Get("last-name"), phonenumbers  ).Exec()
+	err := db.Query("insert into user_data (username ,contact_id , contact_email , contact_fname , contact_lname , contact_phonenumbers ) values(? , uuid() , ? , ? , ? , ? ) ", user.UserName, c.Email , c.FirstName, c.LastName, c.PhoneNumbers).Exec()
 	if err !=nil {
 		fmt.Println(err)
 		return Contact{} , err
 	}
-	c = StampContactId(c)
-	fmt.Println(c.PhoneNumbersStamped)
-	user.User.Contacts = append(user.User.Contacts, c)
+	c.StampContactId()
+	user.Contacts = append(user.Contacts, c)
 	return c , nil
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user *User) Userpage() revel.Result {
 
-
-	user.User.Contacts = nil
+	myuser := UserContancts{Contacts:nil}
 	Username := user.Session["user"]
 	if Username == "" {
 		return user.Redirect("/")
 
 	}
 
-	user.User.UserName = Username
+	myuser.UserName = Username
 
 
-	err :=user.GetUserContacts()
+	err :=myuser.GetUserContacts(user.Db)
 	if err != nil {
-		fmt.Println("DB error")
 		user.RenderError(err)
 
 	}
-
-	Myuser :=user.User
-	return user.Render(Myuser)
+	return user.Render(myuser)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user *User) AddContact() revel.Result{
-	user.User.UserName=user.Session["user"]
+	myuser := UserContancts{}
+	myuser.UserName=user.Session["user"]
 	user.Validation.Required(user.Params.Get("first-name"))
 	user.Validation.Required(user.Params.Get("last-name"))
 	user.Validation.Required(user.Params.Get("email"))
@@ -159,11 +124,24 @@ func (user *User) AddContact() revel.Result{
 	if user.Validation.HasErrors() {
 		user.Validation.Keep()
 		user.FlashParams()
-		fmt.Println("error")
 		return user.RenderTemplate("User/userpage.html")
 	}else {
-		fmt.Println("No error")
-		c , err := user.InsertNewContact()
+		var phonenumbers [] string
+
+		i := 1
+		for user.Params.Get("phone" + strconv.Itoa(i)) != "" {
+			str := user.Params.Get("phone" + strconv.Itoa(i))
+			phonenumbers = append(phonenumbers,str)
+			i++
+		}
+		fmt.Println(phonenumbers)
+		c := Contact{
+			FirstName:user.Params.Get("first-name"),
+			LastName:user.Params.Get("last-name"),
+			Email:user.Params.Get("email"),
+			PhoneNumbers:phonenumbers,
+		}
+		c , err := myuser.InsertNewContact(c , user.Db)
 		if err !=nil {
 			return user.RenderError(err)
 		}
@@ -177,12 +155,11 @@ func (user User) Delete() revel.Result {
 	if user.Validation.HasErrors() {
 		return user.RenderTemplate("user/userpage.html")
 	} else {
-		err := user.DeleteContact(user.Params.Get("id"))
+		myuser :=UserContancts{UserName:user.Session["user"]}
+		err := myuser.DeleteContact(user.Params.Get("id") , user.Db)
 		if err != nil {
-			fmt.Println("DB error")
 			return user.RenderError(err)
 		}
-		fmt.Println("row Deleted")
 		return user.Result
 	}
 }
@@ -193,20 +170,16 @@ func (user User) DeleteNum() revel.Result{
 	if user.Validation.HasErrors() {
 		return user.RenderTemplate("user/userpage.html")
 	} else {
-		err := user.DeleteContactNumber(user.Params.Get("id"),user.Params.Get("ID"))
+		myuser :=UserContancts{UserName:user.Session["user"]}
+		err := myuser.DeleteContactNumber(user.Params.Get("id") , user.Params.Get("ID") , user.Db)
 		if err != nil {
-			fmt.Println("DB error")
 			return user.RenderError(err)
 		}
 	}
-	fmt.Println("number Deleted")
 	return user.Result
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user User) Logout() revel.Result{
-	user.User.UserName=""
-	user.User.Password=""
-	user.User.Contacts=[] Contact{}
 	user.Session["user"] = ""
 
 

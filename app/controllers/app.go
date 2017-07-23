@@ -1,15 +1,19 @@
-package controllers
+	package controllers
 
 import (
 	"github.com/revel/revel"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-
 	"golang.org/x/crypto/bcrypt"
 	"github.com/gocql/gocql"
 )
 
-type App struct {
+type Logins struct {
+	username string
+	password string
+}
+
+	type App struct {
 	*revel.Controller
 	db *gocql.Session
 
@@ -17,34 +21,37 @@ type App struct {
 
 func (c App) Index() revel.Result {
 
+
 	return c.Render()
 }
 
-func (c App) CheckUsernameExists( username string) error{
+
+func (logins * Logins) CheckUsernameExists(db* gocql.Session) error{
 	var databasePassword string
 
-	err := c.db.Query("SELECT password FROM user_logins WHERE username=?", username).Scan( &databasePassword)
+	err := db.Query("SELECT password FROM user_logins WHERE username=?", logins.username).Scan( &databasePassword)
 	fmt.Println(err)
 	return err
 }
 
-func (c App) QueryUser(username string) (string,error){
+func (logins * Logins) QueryUser(db * gocql.Session) (string,error){
 	var databasePassword string
 
-	err := c.db.Query("SELECT password FROM user_logins WHERE username=?", username).Scan( &databasePassword)
+	err := db.Query("SELECT password FROM user_logins WHERE username=?", logins.username).Scan( &databasePassword)
 	return databasePassword,err
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-func (c App) InsertUser( username string, hashedPassword []byte) error{
-	err :=c.db.Query("INSERT INTO user_logins(username, password) VALUES(?, ?)",username, hashedPassword).Exec()
+func (logins * Logins) InsertUser(hashedPassword []byte , db * gocql.Session) error{
+	err :=db.Query("INSERT INTO user_logins(username, password) VALUES(?, ?)", logins.username, hashedPassword).Exec()
 	return err
 
 }
 
-func (c App) SignIn(username string , password string) revel.Result{
+func (c App) SignIn(logins Logins) revel.Result{
 	var err error
 	var databasePassword string
-	databasePassword, err = c.QueryUser( username)
+
+	databasePassword, err = logins.QueryUser(c.db)
 	if err == gocql.ErrNotFound {
 		//no such user
 		c.Flash.Error("Username doesn't exist")
@@ -55,7 +62,7 @@ func (c App) SignIn(username string , password string) revel.Result{
 		return c.Redirect( "/" )
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(logins.password))
 	// If wrong password redirect to the login
 	if  err != nil {
 		//Wrong Password
@@ -63,13 +70,13 @@ func (c App) SignIn(username string , password string) revel.Result{
 		return c.Redirect( "/" )
 	} else {
 		// If the login succeeded
-		c.Session["user"]= username
+		c.Session["user"]= logins.username
 		return c.Redirect( "/userpage" )
 	}
 }
 
-func (c App) Register(username string , password string) revel.Result{
-	err :=c.CheckUsernameExists(username)
+func (c App) Register(logins Logins) revel.Result{
+	err :=logins.CheckUsernameExists(c.db)
 	switch {
 	case err == nil:
 		c.Flash.Error( "Please choose a different username")
@@ -77,17 +84,17 @@ func (c App) Register(username string , password string) revel.Result{
 
 	case err == gocql.ErrNotFound :
 		// Username is available
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(logins.password), bcrypt.DefaultCost)
 		if err != nil {
 			c.Flash.Error("This Password is Not premitted")
 			return c.Redirect( "/" )
 		}
 
-		err = c.InsertUser(username,hashedPassword)
+		err = logins.InsertUser(hashedPassword , c.db)
 		if err != nil {
 			return c.RenderError(err)
 		}
-		c.Session["user"]= username
+		c.Session["user"]= logins.username
 		return c.Redirect("/userpage")
 
 	case err != nil:
@@ -114,15 +121,15 @@ func (c App) Login() revel.Result {
 		c.FlashParams()
 		return  c.RenderTemplate("App/index.html")
 	}
-
+	logins := Logins{username:username , password:password}
 	if c.Params.Get("register")!="" {
-		return c.Register(username,password)
+		return c.Register(logins)
 	}
 
 
 
 	if c.Params.Get("login")!="" {
-		return c.SignIn(username , password)
+		return c.SignIn(logins)
 	}
 
 
