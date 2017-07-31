@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"github.com/revel/revel"
-	"fmt"
 	"strconv"
-	. "MyRevelApp/app/models"
+	"MyRevelApp/app/models"
 	"MyRevelApp/app"
+	"fmt"
 )
 
 
@@ -16,27 +16,25 @@ type User struct {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user *User) Userpage() revel.Result {
 
-	myuser := UserContancts{Contacts:nil}
-	Username := user.Session["user"]
-	if Username == "" {
+	myUser := &models.User{Contacts:nil}
+	myUser.Logins.Username = user.Session["user"]
+	if myUser.Logins.Username == "" {
 		return user.Redirect("/")
 
 	}
 
-	myuser.UserName = Username
-
-
-	err :=myuser.GetUserContacts(app.DB)
+	err :=myUser.GetUserContacts(app.DB)
 	if err != nil {
 		user.RenderError(err)
 
 	}
-	return user.Render(myuser)
+	fmt.Println(myUser)
+	return user.Render(myUser)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user *User) AddContact() revel.Result{
-	myuser := UserContancts{}
-	myuser.UserName=user.Session["user"]
+	myUser := models.User{}
+	myUser.Logins.Username=user.Session["user"]
 
 	user.Validation.Required(user.Params.Get("first-name"))
 	user.Validation.Required(user.Params.Get("last-name"))
@@ -60,18 +58,19 @@ func (user *User) AddContact() revel.Result{
 			phonenumbers = append(phonenumbers,str)
 			i++
 		}
-		c := Contact{
+		contact := models.Contact{
 			FirstName:user.Params.Get("first-name"),
 			LastName:user.Params.Get("last-name"),
 			Email:user.Params.Get("email"),
 			PhoneNumbers:phonenumbers,
 		}
-		c , err := myuser.InsertNewContact(c , app.DB)
+		 err := contact.InsertNewContact(myUser.Logins.Username, app.DB)
 		if err !=nil {
 			return user.RenderError(err)
+		}else {
+			myUser.AddtoContacts(contact)
+			return user.RenderJSON(contact)
 		}
-		fmt.Println(c)
-		return user.RenderJSON(c)
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,8 +80,9 @@ func (user User) Delete() revel.Result {
 	if user.Validation.HasErrors() {
 		return user.RenderTemplate("user/userpage.html")
 	} else {
-		myuser :=UserContancts{UserName:user.Session["user"]}
-		err := myuser.DeleteContact(user.Params.Get("id") , app.DB)
+		username :=user.Session["user"]
+		contact := models.Contact{}
+		err := contact.DeleteContact(user.Params.Get("id") ,username, app.DB)
 		if err != nil {
 			return user.RenderError(err)
 		}
@@ -96,8 +96,9 @@ func (user User) DeleteNum() revel.Result{
 	if user.Validation.HasErrors() {
 		return user.RenderTemplate("user/userpage.html")
 	} else {
-		myuser :=UserContancts{UserName:user.Session["user"]}
-		err := myuser.DeleteContactNumber(user.Params.Get("id") , user.Params.Get("ID") , app.DB)
+		username :=user.Session["user"]
+		contact := models.Contact{}
+		err := contact.DeleteContactNumber(user.Params.Get("id") , user.Params.Get("ID") ,username, app.DB)
 		if err != nil {
 			return user.RenderError(err)
 		}

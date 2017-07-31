@@ -5,7 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/gocql/gocql"
-	."MyRevelApp/app/models"
+	"MyRevelApp/app/models"
 	"MyRevelApp/app"
 )
 
@@ -13,12 +13,10 @@ import (
 
 type App struct {
 	*revel.Controller
-	logins * Logins
+	user * models.User
 }
 
 func (c App) Index() revel.Result {
-
-
 	return c.Render()
 }
 
@@ -29,7 +27,7 @@ func (c App) SignIn() revel.Result{
 	var err error
 	var databasePassword string
 
-	databasePassword, err = c.logins.QueryUser(app.DB)
+	databasePassword, err = c.user.QueryUser(app.DB)
 	if err == gocql.ErrNotFound {
 		//no such user
 		c.Flash.Error("Username doesn't exist")
@@ -40,7 +38,7 @@ func (c App) SignIn() revel.Result{
 		return c.Redirect( "/" )
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(c.logins.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(c.user.Logins.Password))
 	// If wrong password redirect to the login
 	if  err != nil {
 		//Wrong Password
@@ -48,13 +46,13 @@ func (c App) SignIn() revel.Result{
 		return c.Redirect( "/" )
 	} else {
 		// If the login succeeded
-		c.Session["user"]= c.logins.Username
+		c.Session["user"]= c.user.Logins.Username
 		return c.Redirect( "/userpage" )
 	}
 }
 
 func (c App) Register() revel.Result{
-	err :=c.logins.CheckUsernameExists(app.DB)
+	err :=c.user.CheckUsernameExists(app.DB)
 	switch {
 	case err == nil:
 		c.Flash.Error( "Please choose a different username")
@@ -62,17 +60,17 @@ func (c App) Register() revel.Result{
 
 	case err == gocql.ErrNotFound :
 		// Username is available
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(c.logins.Password), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(c.user.Logins.Password), bcrypt.DefaultCost)
 		if err != nil {
 			c.Flash.Error("This Password is Not premitted")
 			return c.Redirect( "/" )
 		}
 
-		err = c.logins.InsertUser(hashedPassword , app.DB)
+		err = c.user.InsertUser(hashedPassword , app.DB)
 		if err != nil {
 			return c.RenderError(err)
 		}
-		c.Session["user"]=c.logins.Username
+		c.Session["user"]=c.user.Logins.Username
 		return c.Redirect("/userpage")
 
 	case err != nil:
@@ -86,12 +84,13 @@ func (c App) Register() revel.Result{
 }
 
 func (c App) Login() revel.Result {
-	c.Params.Bind(&c.logins , "logins")
+	c.user = &models.User{Logins:models.LoginData{}}
+	c.Params.Bind(&c.user.Logins , "logins")
 	//Input Validation
-	c.Validation.Required(c.logins.Username)
-	c.Validation.Required(c.logins.Password)
-	c.Validation.Length(c.logins.Username,50)
-	c.Validation.Length(c.logins.Password,120)
+	c.Validation.Required(c.user.Logins.Username)
+	c.Validation.Required(c.user.Logins.Password)
+	c.Validation.Length(c.user.Logins.Username,50)
+	c.Validation.Length(c.user.Logins.Password,120)
 	if !c.Validation.HasErrors() {
 		c.Validation.Keep()
 		c.FlashParams()
