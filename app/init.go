@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/revel/revel"
+	"github.com/gocql/gocql"
 )
 
 var (
@@ -10,6 +11,8 @@ var (
 
 	// BuildTime revel app build-time (ldflags)
 	BuildTime string
+
+	DB *gocql.Session
 )
 
 func init() {
@@ -34,10 +37,19 @@ func init() {
 	// revel.DevMode and revel.RunMode only work inside of OnAppStart. See Example Startup Script
 	// ( order dependent )
 	// revel.OnAppStart(ExampleStartupScript)
-	// revel.OnAppStart(InitDB)
+	 revel.OnAppStart(startDatabase)
 	// revel.OnAppStart(FillCache)
 }
+func startDatabase(){
+	var err error
+	cluster := gocql.NewCluster("127.0.0.1")
+	cluster.Keyspace = "address_book"
+	DB, err= cluster.CreateSession()
+	if err != nil {
+		panic(err)
+	}
 
+}
 // HeaderFilter adds common security headers
 // TODO turn this into revel.HeaderFilter
 // should probably also have a filter for CSRF

@@ -102,12 +102,12 @@
 <form id="login-form" method="POST" action="/login">
     <div>
         <label>User Name:</label>
-        <input type="email" name="username" required="enabled" placeholder="Enter Username...">
+        <input type="email" name="logins.Username" required="enabled" placeholder="Enter Username...">
     </div>
     <br>
     <div>
         <label>Password:</label>
-        <input type="password" name="password" required="enabled" placeholder="Enter Password...">
+        <input type="password" name="logins.Password" required="enabled" placeholder="Enter Password...">
     </div>
 <div style="color: red;"> {{.flash.error}}</div>
     <br><br>

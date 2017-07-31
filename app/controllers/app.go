@@ -1,22 +1,19 @@
-	package controllers
+package controllers
 
 import (
 	"github.com/revel/revel"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/gocql/gocql"
+	."MyRevelApp/app/models"
+	"MyRevelApp/app"
 )
 
-type Logins struct {
-	username string
-	password string
-}
 
-	type App struct {
+
+type App struct {
 	*revel.Controller
-	db *gocql.Session
-
+	logins * Logins
 }
 
 func (c App) Index() revel.Result {
@@ -26,32 +23,13 @@ func (c App) Index() revel.Result {
 }
 
 
-func (logins * Logins) CheckUsernameExists(db* gocql.Session) error{
-	var databasePassword string
 
-	err := db.Query("SELECT password FROM user_logins WHERE username=?", logins.username).Scan( &databasePassword)
-	fmt.Println(err)
-	return err
-}
 
-func (logins * Logins) QueryUser(db * gocql.Session) (string,error){
-	var databasePassword string
-
-	err := db.Query("SELECT password FROM user_logins WHERE username=?", logins.username).Scan( &databasePassword)
-	return databasePassword,err
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-func (logins * Logins) InsertUser(hashedPassword []byte , db * gocql.Session) error{
-	err :=db.Query("INSERT INTO user_logins(username, password) VALUES(?, ?)", logins.username, hashedPassword).Exec()
-	return err
-
-}
-
-func (c App) SignIn(logins Logins) revel.Result{
+func (c App) SignIn() revel.Result{
 	var err error
 	var databasePassword string
 
-	databasePassword, err = logins.QueryUser(c.db)
+	databasePassword, err = c.logins.QueryUser(app.DB)
 	if err == gocql.ErrNotFound {
 		//no such user
 		c.Flash.Error("Username doesn't exist")
@@ -62,7 +40,7 @@ func (c App) SignIn(logins Logins) revel.Result{
 		return c.Redirect( "/" )
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(logins.password))
+	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(c.logins.Password))
 	// If wrong password redirect to the login
 	if  err != nil {
 		//Wrong Password
@@ -70,13 +48,13 @@ func (c App) SignIn(logins Logins) revel.Result{
 		return c.Redirect( "/" )
 	} else {
 		// If the login succeeded
-		c.Session["user"]= logins.username
+		c.Session["user"]= c.logins.Username
 		return c.Redirect( "/userpage" )
 	}
 }
 
-func (c App) Register(logins Logins) revel.Result{
-	err :=logins.CheckUsernameExists(c.db)
+func (c App) Register() revel.Result{
+	err :=c.logins.CheckUsernameExists(app.DB)
 	switch {
 	case err == nil:
 		c.Flash.Error( "Please choose a different username")
@@ -84,17 +62,17 @@ func (c App) Register(logins Logins) revel.Result{
 
 	case err == gocql.ErrNotFound :
 		// Username is available
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(logins.password), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(c.logins.Password), bcrypt.DefaultCost)
 		if err != nil {
 			c.Flash.Error("This Password is Not premitted")
 			return c.Redirect( "/" )
 		}
 
-		err = logins.InsertUser(hashedPassword , c.db)
+		err = c.logins.InsertUser(hashedPassword , app.DB)
 		if err != nil {
 			return c.RenderError(err)
 		}
-		c.Session["user"]= logins.username
+		c.Session["user"]=c.logins.Username
 		return c.Redirect("/userpage")
 
 	case err != nil:
@@ -108,45 +86,25 @@ func (c App) Register(logins Logins) revel.Result{
 }
 
 func (c App) Login() revel.Result {
-	username := c.Params.Get("username")
-	password := c.Params.Get("password")
+	c.Params.Bind(&c.logins , "logins")
 	//Input Validation
-	c.Validation.Required(username)
-	c.Validation.Required(password)
-	c.Validation.Length(username,50)
-	c.Validation.Length(password,120)
+	c.Validation.Required(c.logins.Username)
+	c.Validation.Required(c.logins.Password)
+	c.Validation.Length(c.logins.Username,50)
+	c.Validation.Length(c.logins.Password,120)
 	if !c.Validation.HasErrors() {
-		fmt.Println("here i am")
 		c.Validation.Keep()
 		c.FlashParams()
 		return  c.RenderTemplate("App/index.html")
 	}
-	logins := Logins{username:username , password:password}
 	if c.Params.Get("register")!="" {
-		return c.Register(logins)
+		return c.Register()
 	}
 
-
-
 	if c.Params.Get("login")!="" {
-		return c.SignIn(logins)
+		return c.SignIn()
 	}
 
 
 	return c.Render()
-}
-
-func startDB(c *App) revel.Result{
-	var err error
-	cluster := gocql.NewCluster("127.0.0.1")
-	cluster.Keyspace = "address_book"
-	c.db, err = cluster.CreateSession()
-	if err != nil {
-		panic(err)
-	}
-	return nil
-}
-
-func init(){
-	revel.InterceptMethod(startDB , revel.BEFORE)
 }
