@@ -14,6 +14,7 @@ GET     /delete                                 User.Delete
 GET     /deletenum                              User.DeleteNum
 POST    /addcontact                             User.AddContact
 GET     /logout                                 User.Logout
+POST    /addnum                                 User.AddNumber
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"MyRevelApp/app/models"
 	"MyRevelApp/app"
-	"fmt"
 )
 
 
@@ -13,6 +12,25 @@ type User struct {
 	*revel.Controller
 }
 
+
+func (user *User) AddNumber() revel.Result {
+
+	number := &models.PhoneNum{}
+	user.Validation.Required(user.Params.Get("number"))
+	user.Validation.Required(user.Params.Get("contactId"))
+	if user.Validation.HasErrors() {
+		user.Validation.Keep()
+		user.FlashParams()
+		err := "Invalid Data"
+		return user.RenderJSON(err)
+	}else {
+
+		number.Phonenumber = user.Params.Get("number")
+		err := number.AddPhoneNumber(user.Params.Get("contactId") , app.DB)
+		if err!=nil { return user.RenderJSON(err)}
+		return user.RenderJSON(number)
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 func (user *User) Userpage() revel.Result {
 
@@ -28,7 +46,6 @@ func (user *User) Userpage() revel.Result {
 		user.RenderError(err)
 
 	}
-	fmt.Println(myUser)
 	return user.Render(myUser)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,14 +65,16 @@ func (user *User) AddContact() revel.Result{
 	if user.Validation.HasErrors() {
 		user.Validation.Keep()
 		user.FlashParams()
-		return user.RenderTemplate("User/userpage.html")
+		err := "Invalid Data"
+		return user.RenderJSON(err)
 	}else {
-		var phonenumbers [] string
+		var phonenumbers [] models.PhoneNum
+		var phonenumber models.PhoneNum
 
 		i := 1
 		for user.Params.Get("phone" + strconv.Itoa(i)) != "" {
-			str := user.Params.Get("phone" + strconv.Itoa(i))
-			phonenumbers = append(phonenumbers,str)
+			phonenumber.Phonenumber = user.Params.Get("phone" + strconv.Itoa(i))
+			phonenumbers = append(phonenumbers,phonenumber)
 			i++
 		}
 		contact := models.Contact{
@@ -66,7 +85,7 @@ func (user *User) AddContact() revel.Result{
 		}
 		 err := contact.InsertNewContact(myUser.Logins.Username, app.DB)
 		if err !=nil {
-			return user.RenderError(err)
+			return user.RenderJSON(err)
 		}else {
 			myUser.AddtoContacts(contact)
 			return user.RenderJSON(contact)
@@ -93,12 +112,12 @@ func (user User) Delete() revel.Result {
 func (user User) DeleteNum() revel.Result{
 	user.Validation.Clear()
 	user.Validation.Required(user.Params.Get("id"))
+	user.Validation.Required(user.Params.Get("ID"))
 	if user.Validation.HasErrors() {
 		return user.RenderTemplate("user/userpage.html")
 	} else {
-		username :=user.Session["user"]
-		contact := models.Contact{}
-		err := contact.DeleteContactNumber(user.Params.Get("id") , user.Params.Get("ID") ,username, app.DB)
+		number := models.PhoneNum{}
+		err := number.DeletePhoneNumber(user.Params.Get("id") , user.Params.Get("ID") ,app.DB)
 		if err != nil {
 			return user.RenderError(err)
 		}

@@ -43,7 +43,7 @@ func init() {
 func startDatabase(){
 	var err error
 	cluster := gocql.NewCluster("127.0.0.1")
-	cluster.Keyspace = "address_book"
+	cluster.Keyspace = "addressbook"
 	DB, err= cluster.CreateSession()
 	if err != nil {
 		panic(err)

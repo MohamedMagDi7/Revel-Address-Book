@@ -141,6 +141,13 @@ color: black;
         border-color: #d43f3a;
         border-radius: 8px;
         }
+
+         .add-btn{
+        color: white;
+        background-color: green;
+        border-color: darkgreen;
+        border-radius: 8px;
+        }
 </style>
 </head>
 <body id="mybody" >
@@ -207,9 +214,18 @@ color: black;
             <td>{{.FirstName}}</td>
             <td>{{.LastName}}</td>
             <td>{{.Email}}</td>
-            <td>{{range .PhoneNumbersStamped}} <object id="number-{{.Id}}-{{.ContactId}}"> {{.Phonenumber}} <button id="delnum_{{.Id}}_{{.ContactId}}" class="delete-btn" onclick="DeleteNum(this)" >Delete</button> </object><br>{{end}}</td>
+            <td>{{range .PhoneNumbers}} <object id="number-{{.NumberId}}-{{.ContactId}}"> {{.Phonenumber}} <button  class="delete-btn" onclick="DeleteNum({{.NumberId}} , {{.ContactId}})" >Delete</button> </object>
+            <br>{{end}}
+            <button class="add-btn" id="show-text" onclick="ShowText()" >+</button>
+            <form id="new-number" onsubmit="AddNumber({{.Id}})" style= "display : none ; ">
+                <input name="number">
+                <input class="add-btn" type="submit" value="Add"  >
+
+            </form>
+            </td>
 
             <td> <button class="delete-btn" onclick="Delete({{.Id}})" >Delete</button></td>
+
         </tr>
         {{end}}
 
@@ -256,10 +272,25 @@ function AddContact()
      });
     }
 
+function AddNumber(contactId)
+    {
+    $.ajax({
+            url: '/addnum?contactId=' + contactId,
+            type: 'POST',
+            data: $("#new-number").serialize(),
+            success: function(data){
+                $("#new-number").hide();
+                $("#show-text").show();
+
+            }
+     });
+    }
+
+
+
 function Delete(Id)
     {
     $.ajax({
-
            url: '/delete?id=' +Id ,
            type: 'GET' ,
            success: $("#contact-row-"+Id).remove()
@@ -268,36 +299,22 @@ function Delete(Id)
 
     }
 
-  function DeleteNum(num)
+  function DeleteNum(numberId , contactId)
     {
-        var str =num.id;
-        var res = str.split("_");
-        var contactId = res[2];
-        var numberId = parseInt(res[1],10);
-        $.ajax({
 
+        $.ajax({
            url: '/deletenum?id=' +numberId +'&ID=' + contactId,
            type: 'GET' ,
-           success: function(data)
-           {
-
-           $("#number-"+numberId+"-"+contactId).remove();
-           var newNumberId = numberId +1;
-           while(document.getElementById("number-"+newNumberId+"-"+contactId))
-           {
-             numberId = newNumberId -1;
-             document.getElementById("number-"+newNumberId+"-"+contactId).setAttribute("id" , "number-"+numberId+"-"+contactId);
-             document.getElementById("delnum_"+newNumberId+"_"+contactId).setAttribute("id" , "delnum_"+numberId+"_"+contactId);
-             newNumberId= newNumberId +1 ;
-           }
-
-           }
-
-
+           success: $("#number-"+numberId+"-"+contactId).remove()
     });
 
 }
 
+function ShowText()
+    {
+                $("#new-number").show();
+                $("#show-text").hide();
+    }
 </script>
 
 
